@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación de Códigos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="startScreen" class="screen">
+
+  <h2>Evaluación de Códigos</h2>
+
+  <input id="userName" type="text" placeholder="Nombre completo">
+  <input id="userBadge" type="tel" placeholder="Gafete">
+
+  <button id="startBtn" onclick="startTest()" disabled>Iniciar</button>
+</div>
+
+<div id="loader" class="screen" style="display:none;">
+  <h3>Cargando evaluación...</h3>
+</div>
+
+<div class="container screen" style="display:none;">
+  <!-- tu evaluación actual -->
+  <div class="progress-container">
+  <div class="progress-text" id="progressText">Pregunta 1 de 10</div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+
+  <div class="container">
+  <h2 id="timer">Tiempo: 02:00</h2>
+
+  <img id="productImage" alt="Producto">
+  <h3 id="productName"></h3>
+
+<input 
+  id="codeInput"
+  type="tel"
+  inputmode="numeric"
+  pattern="[0-9]{6}"
+  maxlength="6"
+  placeholder="Ingrese el código">
+
+  <button onclick="submitAnswer()">Continuar</button>
+</div>
+</div>
+
+
+
+
+<script src="script.js"></script>
+</body>
+</html>
