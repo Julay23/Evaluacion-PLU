@@ -8,9 +8,10 @@ let answers = [];
 //let time = 120;
 let timerInterval = null;
 
-const TOTAL_TIME = 5*60; // segundos
+const TOTAL_TIME = 2*60; // segundos
 let time = TOTAL_TIME;
 let warningShown = false; // alerta 1 minuto
+let warnedOneMinute = false; // 🔔 bandera
 
 
 
@@ -177,21 +178,32 @@ function updateProgress() {
 ========================= */
 function startTimer() {
   timerInterval = setInterval(() => {
-    document.getElementById("timer").textContent =
+    time--;
+
+    const timerEl = document.getElementById("timer");
+    timerEl.textContent =
       `Tiempo: ${Math.floor(time / 60)}:${String(time % 60).padStart(2, "0")}`;
 
-    // ⚠️ Alerta cuando falta 1 minuto
-    if (time === 60 && !warningShown) {
-      warningShown = true;
-      alert("⚠️ Atención: queda 1 minuto para finalizar la evaluación");
+    // ⚠️ ALERTA cuando falta 1 minuto
+    if (time === 60 && !warnedOneMinute) {
+      warnedOneMinute = true;
+
+      timerEl.style.color = "#d32f2f"; // rojo
+      timerEl.style.fontWeight = "bold";
+
+      const warning = document.createElement("div");
+      warning.textContent = "⚠️ Falta 1 minuto";
+      warning.style.color = "#d32f2f";
+      warning.style.fontWeight = "bold";
+      warning.style.marginTop = "10px";
+
+      timerEl.parentNode.appendChild(warning);
     }
 
     if (time <= 0) {
+      clearInterval(timerInterval);
       finishTest();
-      return;
     }
-
-    time--;
   }, 1000);
 }
 
