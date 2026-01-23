@@ -10,12 +10,16 @@ let timerInterval = null;
 
 const TOTAL_TIME = 5*60; // segundos
 let time = TOTAL_TIME;
+let warningShown = false; // alerta 1 minuto
+
 
 
 let userName = "";
 let userBadge = "";
 
 let testActive = false;
+
+
 
 
 
@@ -80,6 +84,9 @@ function startTest() {
    CARGAR PRODUCTOS
 ========================= */
 function loadProducts() {
+  warningShown = false;
+time = TOTAL_TIME;
+
   fetch("https://script.google.com/macros/s/AKfycbxuodVSt8c-bjxvE5n6cgdZNQCeCCnmUXO5MV75EnzrkCbTaNP0M3RrBvDJ_rcEWMnl/exec")
     .then(res => res.json())
     .then(data => {
@@ -170,14 +177,24 @@ function updateProgress() {
 ========================= */
 function startTimer() {
   timerInterval = setInterval(() => {
-    time--;
-
     document.getElementById("timer").textContent =
       `Tiempo: ${Math.floor(time / 60)}:${String(time % 60).padStart(2, "0")}`;
 
-    if (time <= 0) finishTest();
+    // ⚠️ Alerta cuando falta 1 minuto
+    if (time === 60 && !warningShown) {
+      warningShown = true;
+      alert("⚠️ Atención: queda 1 minuto para finalizar la evaluación");
+    }
+
+    if (time <= 0) {
+      finishTest();
+      return;
+    }
+
+    time--;
   }, 1000);
 }
+
 
 window.addEventListener("beforeunload", (e) => {
   if (testActive) {
