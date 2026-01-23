@@ -195,7 +195,7 @@ function startTimer() {
 
       timerEl.style.color = "#f57c00";
 
-      alertBanner("⚠️ Queda 1 minuto");
+      alertBanner("⚠️ Quedan menos de 1 minuto");
     }
 
     // 🔔 30 SEGUNDOS
@@ -206,7 +206,7 @@ function startTimer() {
 
       timerEl.style.color = "#d32f2f";
 
-      alertBanner("🚨 Quedan 30 segundos");
+      alertBanner("🚨 Quedan menos de 30 segundos");
     }
 
     // 🔔 10 SEGUNDOS (pitido rápido)
@@ -369,15 +369,22 @@ function playBeep(times = 1, duration = 300) {
 }
  //alerta visual de 1 minuto
  function alertBanner(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  div.style.marginTop = "10px";
-  div.style.fontWeight = "bold";
-  div.style.color = "#d32f2f";
-  div.style.textAlign = "center";
+  let alertDiv = document.getElementById("timeAlert");
 
-  document.getElementById("timer").parentNode.appendChild(div);
+  if (!alertDiv) {
+    alertDiv = document.createElement("div");
+    alertDiv.id = "timeAlert";
+    alertDiv.style.marginTop = "10px";
+    alertDiv.style.fontWeight = "bold";
+    alertDiv.style.textAlign = "center";
+    alertDiv.style.color = "#d32f2f";
+
+    document.getElementById("timer").parentNode.appendChild(alertDiv);
+  }
+
+  alertDiv.textContent = text;
 }
+
 
 
 
