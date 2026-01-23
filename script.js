@@ -15,6 +15,8 @@ let warned30sec = false;
 let userName = "";
 let userBadge = "";
 let testActive = false;
+let testFinished = false; // 🔥 FIX evita doble final
+
 
 /* =========================
    ELEMENTOS
@@ -101,6 +103,8 @@ function shuffle(array) {
    MOSTRAR PREGUNTA
 ========================= */
 function loadQuestion() {
+  if (testFinished) return; // 🔥 FIX
+
   if (products.length === 0) {
     finishTest();
     return;
@@ -117,16 +121,17 @@ function loadQuestion() {
   updateProgress();
 }
 
+
 /* =========================
    RESPUESTA
 ========================= */
 function submitAnswer() {
+  if (testFinished) return; // 🔥 FIX
   if (products.length === 0) return;
 
   const input = codeInput.value.trim();
-  const currentProduct = products.shift(); // cola real
+  const currentProduct = products.shift();
 
-  // ENTER VACÍO → vuelve al final
   if (input === "") {
     products.push(currentProduct);
     loadQuestion();
@@ -146,6 +151,7 @@ function submitAnswer() {
 
   loadQuestion();
 }
+
 
 /* =========================
    PROGRESO
@@ -178,7 +184,7 @@ function startTimer() {
       playBeep(1);
       vibrate([300]);
       timerEl.style.color = "#f57c00";
-      alertBanner("⚠️ Queda 1 minuto");
+      alertBanner("⚠️ Queda < 1 minuto");
     }
 
     if (time === 30 && !warned30sec) {
@@ -186,7 +192,7 @@ function startTimer() {
       playBeep(2);
       vibrate([200, 100, 200]);
       timerEl.style.color = "#d32f2f";
-      alertBanner("🚨 Quedan 30 segundos");
+      alertBanner("🚨 Queda < 30 segundos");
     }
     // 🔔 10 SEGUNDOS (pitido rápido)
      if (time <= 10 && time > 0) {
@@ -201,27 +207,104 @@ function startTimer() {
 }
 
 /* =========================
+   CONFIRMAR FINAL ¿ESTAS SEGURO?
+========================= */
+function confirmarFinal() {
+  const fondo = document.createElement("div");
+  fondo.style.position = "fixed";
+  fondo.style.inset = "0";
+  fondo.style.background = "rgba(0,0,0,0.5)";
+  fondo.style.display = "flex";
+  fondo.style.alignItems = "center";
+  fondo.style.justifyContent = "center";
+  fondo.style.zIndex = "9999";
+
+  const caja = document.createElement("div");
+  caja.style.background = "white";
+  caja.style.padding = "20px";
+  caja.style.borderRadius = "10px";
+  caja.style.textAlign = "center";
+  caja.style.minWidth = "260px";
+
+  caja.innerHTML = `
+    <p style="font-size:16px; margin-bottom:6px;">
+      ¿Estás seguro/a de finalizar?
+    </p>
+    <p id="tiempoModal" style="font-size:14px; color:#d32f2f;">
+      Aún quedan <strong>${formatTime(time)}</strong> ⏳
+    </p>
+    <div style="margin-top:15px; display:flex; justify-content:center; gap:20px;">
+      <button id="btnSi">Sí</button>
+      <button id="btnNo">No</button>
+    </div>
+  `;
+
+  fondo.appendChild(caja);
+  document.body.appendChild(fondo);
+
+  // 🔁 Actualiza el tiempo dentro del modal
+  const intervaloModal = setInterval(() => {
+    const t = document.getElementById("tiempoModal");
+    if (!t) return;
+    t.innerHTML = `Aún quedan <strong>${formatTime(time)}</strong> ⏳`;
+  }, 1000);
+
+  document.getElementById("btnSi").onclick = () => {
+    clearInterval(intervaloModal);
+    fondo.remove();
+    finishTest();
+  };
+
+  document.getElementById("btnNo").onclick = () => {
+    clearInterval(intervaloModal);
+    fondo.remove();
+  };
+}
+
+
+
+
+/* =========================
    FINAL
 ========================= */
 function finishTest() {
+ 
+  if (testFinished) return; // 🔥 FIX
+  testFinished = true;
+
   testActive = false;
   clearInterval(timerInterval);
 
-  const TOTAL_PREGUNTAS = answers.length + products.length;
+  const TOTAL_PREGUNTAS = products.length + answers.length;
 
-  // Las que quedaron sin responder cuentan como incorrectas
-  const unanswered = products.map(p => ({
-    producto: p.name,
-    ingresado: "— sin responder —",
-    correcto: p.code,
-    acierto: false
-  }));
+  const answeredNames = answers.map(a => a.producto);
+
+  const unanswered = products
+    .filter(p => !answeredNames.includes(p.name))
+    .map(p => ({
+      producto: p.name,
+      ingresado: "— sin responder —",
+      correcto: p.code,
+      acierto: false
+    }));
 
   const finalAnswers = [...answers, ...unanswered];
 
   const correctFinal = finalAnswers.filter(a => a.acierto).length;
   const incorrectFinal = TOTAL_PREGUNTAS - correctFinal;
   const nota = Math.round((correctFinal / TOTAL_PREGUNTAS) * 100);
+
+  const timeUsed = TOTAL_TIME - time;
+const timeFormatted = formatTime(timeUsed);
+
+saveResults(
+  TOTAL_PREGUNTAS,
+  correctFinal,
+  incorrectFinal,
+  nota,
+  timeFormatted
+);
+
 
   document.querySelector(".container").innerHTML = `
     <h2>Evaluación Finalizada</h2>
@@ -244,6 +327,7 @@ function finishTest() {
             Ingresado: <span style="color:#c62828">${e.ingresado}</span><br>
             Correcto: <span style="color:#2e7d32">${e.correcto}</span>
           </li>
+          <p></p>
         `)
         .join("")}
     </ul>
@@ -340,3 +424,22 @@ window.addEventListener("beforeunload", e => {
     e.returnValue = "";
   }
 });
+
+// Guardar resultados en linea 
+function saveResults(total, correctas, incorrectas, nota, tiempo) {
+  fetch("https://script.google.com/macros/s/AKfycbxuodVSt8c-bjxvE5n6cgdZNQCeCCnmUXO5MV75EnzrkCbTaNP0M3RrBvDJ_rcEWMnl/exec", {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nombre: userName,
+      gafete: userBadge,
+      total,
+      correctas,
+      incorrectas,
+      nota,
+      tiempo
+    })
+  });
+}
+
