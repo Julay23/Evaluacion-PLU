@@ -143,14 +143,30 @@ function loadQuestion() {
 ========================= */
 function submitAnswer() {
   const input = codeInput.value.trim();
-  const isCorrect = input === products[index].code;
+  const currentProduct = products[index];
+
+  // 👉 SI ESTÁ VACÍO: reinsertar al final
+  if (input === "") {
+    products.push(currentProduct); // vuelve al final
+    index++;
+
+    if (index < products.length) {
+      loadQuestion();
+    } else {
+      finishTest();
+    }
+    return; // 🔥 importante
+  }
+
+  // 👉 Si escribió algo, se evalúa normal
+  const isCorrect = input === currentProduct.code;
 
   if (isCorrect) correct++;
 
   answers.push({
-    producto: products[index].name,
+    producto: currentProduct.name,
     ingresado: input,
-    correcto: products[index].code,
+    correcto: currentProduct.code,
     acierto: isCorrect
   });
 
@@ -162,6 +178,7 @@ function submitAnswer() {
     finishTest();
   }
 }
+
 
 /* =========================
    PROGRESO
