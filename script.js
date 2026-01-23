@@ -8,7 +8,7 @@ let answers = [];
 //let time = 120;
 let timerInterval = null;
 
-const TOTAL_TIME = 120; // segundos
+const TOTAL_TIME = 5*60; // segundos
 let time = TOTAL_TIME;
 
 
