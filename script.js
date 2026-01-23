@@ -2,31 +2,19 @@
    VARIABLES GLOBALES
 ========================= */
 let products = [];
-let index = 0;
 let correct = 0;
 let answers = [];
-//let time = 120;
 let timerInterval = null;
 
-const TOTAL_TIME = 2*60; // segundos
+const TOTAL_TIME = 5 * 60; // segundos
 let time = TOTAL_TIME;
-let warningShown = false; // alerta 1 minuto
-let warnedOneMinute = false; // 🔔 bandera
- /// variables globales para alertas de sonido
- let warned1min = false;
+
+let warned1min = false;
 let warned30sec = false;
-let warned10sec = false;
-
-
 
 let userName = "";
 let userBadge = "";
-
 let testActive = false;
-
-
-
-
 
 /* =========================
    ELEMENTOS
@@ -40,27 +28,16 @@ const codeInput = document.getElementById("codeInput");
    VALIDACIÓN INICIO
 ========================= */
 function validateInputs() {
-  let valid = true;
+  const nameValid = nameInput.value.trim().length >= 3;
+  const badgeValid = badgeInput.value.trim().length >= 3;
 
-  if (nameInput.value.trim().length < 3) {
-    nameInput.classList.add("invalid");
-    nameInput.classList.remove("valid");
-    valid = false;
-  } else {
-    nameInput.classList.add("valid");
-    nameInput.classList.remove("invalid");
-  }
+  nameInput.classList.toggle("valid", nameValid);
+  nameInput.classList.toggle("invalid", !nameValid);
 
-  if (badgeInput.value.trim().length < 3) {
-    badgeInput.classList.add("invalid");
-    badgeInput.classList.remove("valid");
-    valid = false;
-  } else {
-    badgeInput.classList.add("valid");
-    badgeInput.classList.remove("valid");
-  }
+  badgeInput.classList.toggle("valid", badgeValid);
+  badgeInput.classList.toggle("invalid", !badgeValid);
 
-  startBtn.disabled = !valid;
+  startBtn.disabled = !(nameValid && badgeValid);
 }
 
 nameInput.addEventListener("input", validateInputs);
@@ -73,11 +50,10 @@ function startTest() {
   userName = nameInput.value.trim();
   userBadge = badgeInput.value.trim();
 
+  if (!userName || !userBadge) return;
+
   testActive = true;
   lockBackButton();
-
-
-  if (!userName || !userBadge) return;
 
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("loader").style.display = "block";
@@ -89,28 +65,26 @@ function startTest() {
    CARGAR PRODUCTOS
 ========================= */
 function loadProducts() {
-  warningShown = false;
-time = TOTAL_TIME;
+  time = TOTAL_TIME;
+  warned1min = false;
+  warned30sec = false;
 
   fetch("https://script.google.com/macros/s/AKfycbxuodVSt8c-bjxvE5n6cgdZNQCeCCnmUXO5MV75EnzrkCbTaNP0M3RrBvDJ_rcEWMnl/exec")
     .then(res => res.json())
     .then(data => {
-      products = data;
+      products = [...data];
       shuffle(products);
+
+      correct = 0;
+      answers = [];
 
       document.getElementById("loader").style.display = "none";
       document.querySelector(".container").style.display = "block";
 
-      index = 0;
-      correct = 0;
-      answers = [];
-
       loadQuestion();
       startTimer();
     })
-    .catch(() => {
-      alert("Error cargando productos");
-    });
+    .catch(() => alert("Error cargando productos"));
 }
 
 /* =========================
@@ -127,7 +101,12 @@ function shuffle(array) {
    MOSTRAR PREGUNTA
 ========================= */
 function loadQuestion() {
-  const p = products[index];
+  if (products.length === 0) {
+    finishTest();
+    return;
+  }
+
+  const p = products[0];
 
   document.getElementById("productImage").src = p.image;
   document.getElementById("productName").textContent = p.name;
@@ -142,23 +121,18 @@ function loadQuestion() {
    RESPUESTA
 ========================= */
 function submitAnswer() {
+  if (products.length === 0) return;
+
   const input = codeInput.value.trim();
-  const currentProduct = products[index];
+  const currentProduct = products.shift(); // cola real
 
-  // 👉 SI ESTÁ VACÍO: reinsertar al final
+  // ENTER VACÍO → vuelve al final
   if (input === "") {
-    products.push(currentProduct); // vuelve al final
-    index++;
-
-    if (index < products.length) {
-      loadQuestion();
-    } else {
-      finishTest();
-    }
-    return; // 🔥 importante
+    products.push(currentProduct);
+    loadQuestion();
+    return;
   }
 
-  // 👉 Si escribió algo, se evalúa normal
   const isCorrect = input === currentProduct.code;
 
   if (isCorrect) correct++;
@@ -170,23 +144,16 @@ function submitAnswer() {
     acierto: isCorrect
   });
 
-  index++;
-
-  if (index < products.length) {
-    loadQuestion();
-  } else {
-    finishTest();
-  }
+  loadQuestion();
 }
-
 
 /* =========================
    PROGRESO
 ========================= */
 function updateProgress() {
-  const current = index + 1;
-  const total = products.length;
-  const percent = (current / total) * 100;
+  const total = answers.length + products.length;
+  const current = answers.length + 1;
+  const percent = (answers.length / total) * 100;
 
   document.getElementById("progressText").textContent =
     `Pregunta ${current} de ${total}`;
@@ -198,38 +165,33 @@ function updateProgress() {
    TEMPORIZADOR
 ========================= */
 function startTimer() {
+  clearInterval(timerInterval);
+
   timerInterval = setInterval(() => {
     time--;
 
     const timerEl = document.getElementById("timer");
     timerEl.textContent = `Tiempo: ${formatTime(time)}`;
 
-    // 🔔 1 MINUTO
     if (time === 60 && !warned1min) {
       warned1min = true;
       playBeep(1);
       vibrate([300]);
-
       timerEl.style.color = "#f57c00";
-
-      alertBanner("⚠️ Quedan menos de 1 minuto");
+      alertBanner("⚠️ Queda 1 minuto");
     }
 
-    // 🔔 30 SEGUNDOS
     if (time === 30 && !warned30sec) {
       warned30sec = true;
       playBeep(2);
       vibrate([200, 100, 200]);
-
       timerEl.style.color = "#d32f2f";
-
-      alertBanner("🚨 Quedan menos de 30 segundos");
+      alertBanner("🚨 Quedan 30 segundos");
     }
-
     // 🔔 10 SEGUNDOS (pitido rápido)
-    if (time <= 10 && time > 0) {
-      playBeep(1, 120);
-    }
+     if (time <= 10 && time > 0) {
+       playBeep(1, 120);
+     }
 
     if (time <= 0) {
       clearInterval(timerInterval);
@@ -238,72 +200,53 @@ function startTimer() {
   }, 1000);
 }
 
-
-
-window.addEventListener("beforeunload", (e) => {
-  if (testActive) {
-    e.preventDefault();
-    e.returnValue = "";
-  }
-});
-function lockBackButton() {
-  history.pushState(null, "", location.href);
-}
-
-window.addEventListener("popstate", () => {
-  if (testActive) {
-    lockBackButton();
-  }
-});
-
-
-
 /* =========================
    FINAL
 ========================= */
 function finishTest() {
   testActive = false;
   clearInterval(timerInterval);
-  const timeUsed = TOTAL_TIME - time;
 
-  saveResults();
+  const TOTAL_PREGUNTAS = answers.length + products.length;
 
-  const errores = answers.filter(a => !a.acierto);
+  // Las que quedaron sin responder cuentan como incorrectas
+  const unanswered = products.map(p => ({
+    producto: p.name,
+    ingresado: "— sin responder —",
+    correcto: p.code,
+    acierto: false
+  }));
+
+  const finalAnswers = [...answers, ...unanswered];
+
+  const correctFinal = finalAnswers.filter(a => a.acierto).length;
+  const incorrectFinal = TOTAL_PREGUNTAS - correctFinal;
+  const nota = Math.round((correctFinal / TOTAL_PREGUNTAS) * 100);
 
   document.querySelector(".container").innerHTML = `
     <h2>Evaluación Finalizada</h2>
-
     <p><strong>Asociado:</strong> ${userName}</p>
     <p><strong>Gafete:</strong> ${userBadge}</p>
 
-    <p>Total: ${products.length}</p>
-    <p>Correctas: ${correct}</p>
-    <p>Incorrectas: ${products.length - correct}</p>
+    <p>Total preguntas: ${TOTAL_PREGUNTAS}</p>
+    <p>Correctas: ${correctFinal}</p>
+    <p>Incorrectas: ${incorrectFinal}</p>
 
-    <h3>Nota: ${Math.round((correct / products.length) * 100)}%</h3>
+    <h3>Nota final: ${nota}%</h3>
 
-    <h4>Errores (${errores.length})</h4>
-<ul class="results">
-
-  ${errores.map(e => `
-    <li style="
-      margin-bottom:12px;
-      line-height:1.4;
-      word-break: break-word;
-      overflow-wrap: break-word;
-    ">
-      <strong>${e.producto}</strong><br>
-      Ingresado: <span style="color:#c62828;font-weight:600;">
-        ${e.ingresado || "vacío"}
-      </span><br>
-      Correcto: <span style="color:#2e7d32;font-weight:600;">
-        ${e.correcto}
-      </span>
-    </li>
-  `).join("")}
-
-</ul>
-
+    <h4>Errores (${incorrectFinal})</h4>
+    <ul class="results">
+      ${finalAnswers
+        .filter(a => !a.acierto)
+        .map(e => `
+          <li>
+            <strong>${e.producto}</strong><br>
+            Ingresado: <span style="color:#c62828">${e.ingresado}</span><br>
+            Correcto: <span style="color:#2e7d32">${e.correcto}</span>
+          </li>
+        `)
+        .join("")}
+    </ul>
 
     <button onclick="location.reload()">Volver al inicio</button>
   `;
@@ -317,48 +260,31 @@ codeInput.addEventListener("input", () => {
   codeInput.value = codeInput.value.replace(/\D/g, "");
 });
 
-codeInput.addEventListener("keydown", (e) => {
+codeInput.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
     submitAnswer();
-  }
-
-  if (
-    !/[0-9]/.test(e.key) &&
-    !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)
-  ) {
-    e.preventDefault();
   }
 });
 
 /* =========================
    ENTER PARA INICIAR
 ========================= */
-document.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", e => {
   if (e.key === "Enter" && !startBtn.disabled && startBtn.offsetParent !== null) {
     startTest();
   }
 });
 
-window.addEventListener("load", () => {
-  nameInput.value = "";
-  badgeInput.value = "";
-  startBtn.disabled = true;
-
-  nameInput.classList.remove("valid", "invalid");
-  badgeInput.classList.remove("valid", "invalid");
-});
-
-/*=============================================
-    FUNCION PARA CONVERTIR EL TIEMPO A MINUTOS
-===============================================*/
+/* =========================
+   UTILIDADES
+========================= */
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-//funcio de sonidoo
 function playBeep(times = 1, duration = 300) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -366,68 +292,51 @@ function playBeep(times = 1, duration = 300) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = "sine";
     osc.frequency.value = 880;
     gain.gain.value = 0.2;
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    const start = ctx.currentTime + i * (duration / 1000 + 0.1);
+    const start = ctx.currentTime + i * 0.4;
     osc.start(start);
     osc.stop(start + duration / 1000);
   }
 }
- // funcion de vibracion
- function vibrate(pattern) {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
-  }
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }
- //alerta visual de 1 minuto
- function alertBanner(text) {
-  let alertDiv = document.getElementById("timeAlert");
 
-  if (!alertDiv) {
-    alertDiv = document.createElement("div");
-    alertDiv.id = "timeAlert";
-    alertDiv.style.marginTop = "10px";
-    alertDiv.style.fontWeight = "bold";
-    alertDiv.style.textAlign = "center";
-    alertDiv.style.color = "#d32f2f";
+function alertBanner(text) {
+  let el = document.getElementById("timeAlert");
 
-    document.getElementById("timer").parentNode.appendChild(alertDiv);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "timeAlert";
+    el.style.fontWeight = "bold";
+    el.style.textAlign = "center";
+    el.style.marginTop = "10px";
+    document.getElementById("timer").parentNode.appendChild(el);
   }
 
-  alertDiv.textContent = text;
+  el.textContent = text;
 }
 
-
-
-
-// Guardar resultados en linea
-function saveResults() {
-
-  const timeUsed = TOTAL_TIME - time;
-  const timeFormatted = formatTime(timeUsed);
-
-  fetch("https://script.google.com/macros/s/AKfycbxuodVSt8c-bjxvE5n6cgdZNQCeCCnmUXO5MV75EnzrkCbTaNP0M3RrBvDJ_rcEWMnl/exec", {
-    method: "POST",
-    mode: "no-cors", // 🔥 CLAVE
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      nombre: userName,
-      gafete: userBadge,
-      total: products.length,
-      correctas: correct,
-      incorrectas: products.length - correct,
-      nota: Math.round((correct / products.length) * 100),
-      tiempo: timeFormatted
-    })
-  });
+/* =========================
+   BLOQUEAR SALIDA
+========================= */
+function lockBackButton() {
+  history.pushState(null, "", location.href);
 }
 
+window.addEventListener("popstate", () => {
+  if (testActive) lockBackButton();
+});
 
-
+window.addEventListener("beforeunload", e => {
+  if (testActive) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
