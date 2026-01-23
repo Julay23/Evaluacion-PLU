@@ -12,6 +12,10 @@ const TOTAL_TIME = 2*60; // segundos
 let time = TOTAL_TIME;
 let warningShown = false; // alerta 1 minuto
 let warnedOneMinute = false; // 🔔 bandera
+ /// variables globales para alertas de sonido
+ let warned1min = false;
+let warned30sec = false;
+let warned10sec = false;
 
 
 
@@ -181,23 +185,33 @@ function startTimer() {
     time--;
 
     const timerEl = document.getElementById("timer");
-    timerEl.textContent =
-      `Tiempo: ${Math.floor(time / 60)}:${String(time % 60).padStart(2, "0")}`;
+    timerEl.textContent = `Tiempo: ${formatTime(time)}`;
 
-    // ⚠️ ALERTA cuando falta 1 minuto
-    if (time === 60 && !warnedOneMinute) {
-      warnedOneMinute = true;
+    // 🔔 1 MINUTO
+    if (time === 60 && !warned1min) {
+      warned1min = true;
+      playBeep(1);
+      vibrate([300]);
 
-      timerEl.style.color = "#d32f2f"; // rojo
-      timerEl.style.fontWeight = "bold";
+      timerEl.style.color = "#f57c00";
 
-      const warning = document.createElement("div");
-      warning.textContent = "⚠️ Falta 1 minuto";
-      warning.style.color = "#d32f2f";
-      warning.style.fontWeight = "bold";
-      warning.style.marginTop = "10px";
+      alertBanner("⚠️ Queda 1 minuto");
+    }
 
-      timerEl.parentNode.appendChild(warning);
+    // 🔔 30 SEGUNDOS
+    if (time === 30 && !warned30sec) {
+      warned30sec = true;
+      playBeep(2);
+      vibrate([200, 100, 200]);
+
+      timerEl.style.color = "#d32f2f";
+
+      alertBanner("🚨 Quedan 30 segundos");
+    }
+
+    // 🔔 10 SEGUNDOS (pitido rápido)
+    if (time <= 10 && time > 0) {
+      playBeep(1, 120);
     }
 
     if (time <= 0) {
@@ -206,6 +220,7 @@ function startTimer() {
     }
   }, 1000);
 }
+
 
 
 window.addEventListener("beforeunload", (e) => {
@@ -325,6 +340,45 @@ function formatTime(seconds) {
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+//funcio de sonidoo
+function playBeep(times = 1, duration = 300) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  for (let i = 0; i < times; i++) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.2;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const start = ctx.currentTime + i * (duration / 1000 + 0.1);
+    osc.start(start);
+    osc.stop(start + duration / 1000);
+  }
+}
+ // funcion de vibracion
+ function vibrate(pattern) {
+  if (navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+}
+ //alerta visual de 1 minuto
+ function alertBanner(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  div.style.marginTop = "10px";
+  div.style.fontWeight = "bold";
+  div.style.color = "#d32f2f";
+  div.style.textAlign = "center";
+
+  document.getElementById("timer").parentNode.appendChild(div);
+}
+
 
 
 // Guardar resultados en linea
